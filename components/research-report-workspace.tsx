@@ -273,7 +273,7 @@ export default function ResearchReportWorkspace() {
                   />
                 </div>
               </div>
-              <pre className="max-h-[720px] overflow-auto whitespace-pre-wrap p-5 text-sm leading-7 text-[#333d4b]">
+              <pre className="max-h-[720px] overflow-auto whitespace-pre-wrap p-5 text-sm leading-8 text-[#333d4b]">
                 {report}
               </pre>
             </article>
@@ -524,41 +524,48 @@ function buildMarkdownReport(form: ReportForm, keywords: string[], sources: Repo
     "",
     `# ${form.topic.trim()} 리서치 보고서`,
     "",
-    `- 보고서 목적: ${form.purpose}`,
-    `- 자료 범위: ${scopeLabel(form.scope)}`,
-    `- 검색 기간: ${form.startDate || "제한 없음"} ~ ${form.endDate || "제한 없음"}`,
-    `- 확장 검색 키워드: ${keywords.join(", ") || "-"}`,
+    formatInfoTable([
+      ["보고서 목적", form.purpose],
+      ["자료 범위", scopeLabel(form.scope)],
+      ["검색 기간", `${form.startDate || "제한 없음"} ~ ${form.endDate || "제한 없음"}`],
+      ["확장 검색 키워드", keywords.join(", ") || "-"]
+    ]),
     "",
-    "## 1. 검토 배경",
-    buildBackground(form, tone),
+    "## 1. 결론요약",
+    buildExecutiveSummary(form, sources, tone),
     "",
-    "## 2. 검토 주제 및 주요 쟁점",
-    buildIssues(form, keywords, tone),
+    "## 2. 본론",
+    "### 2.1 검토 배경",
+    buildBackground(form),
     "",
-    "## 3. 관련 법령 및 판단기준",
-    buildStandards(sources, tone),
+    "### 2.2 주요 쟁점",
+    buildIssues(form, keywords),
     "",
-    "## 4. 관련 판례 요약",
+    "### 2.3 관련 법령 및 판단기준",
+    buildStandards(sources),
+    "",
+    "### 2.4 관련 판례 요약",
     caseSources.length > 0 ? caseSources.map((source, index) => formatSourceSummary(index, source)).join("\n\n") : "- 검색된 판례가 부족합니다.",
     "",
-    "## 5. 관련 행정해석 요약",
+    "### 2.5 관련 행정해석 요약",
     adminSources.length > 0
       ? adminSources.map((source, index) => formatSourceSummary(index, source)).join("\n\n")
       : "- 검색된 행정해석이 부족합니다.",
     "",
-    "## 6. 회사 상황에 대한 실무상 리스크",
-    buildRisks(form, sources, tone),
+    "### 2.6 회사 상황에 대한 실무상 리스크",
+    buildRisks(form, sources),
     "",
-    "## 7. 대응방안",
+    "## 3. 대응방안",
+    "### 3.1 실행 방향",
     buildActions(form.purpose),
     "",
-    "## 8. 준비자료 체크리스트",
+    "### 3.2 준비자료 체크리스트",
     buildChecklist(form.topic, keywords),
     "",
-    "## 9. 노무사 검토 필요사항",
+    "### 3.3 노무사 검토 필요사항",
     buildExpertReviewItems(form.topic),
     "",
-    "## 10. 유의사항",
+    "### 3.4 유의사항",
     [
       "- 본 보고서는 검색된 공개 자료를 바탕으로 한 리서치 초안입니다.",
       "- 판례는 법원의 구체적 사실관계 판단이고, 행정해석은 행정기관의 해석 기준이므로 성격이 다릅니다.",
@@ -574,41 +581,75 @@ function buildMarkdownReport(form: ReportForm, keywords: string[], sources: Repo
     .join("\n");
 }
 
-function buildBackground(form: ReportForm, tone: string) {
+function buildExecutiveSummary(form: ReportForm, sources: ReportSource[], tone: string) {
+  const caseCount = sources.filter((source) => source.source_type === "판례").length;
+  const adminCount = sources.filter((source) => source.source_type === "행정해석").length;
+  const sourceStatus =
+    sources.length >= 3
+      ? `관련 자료 ${sources.length}건을 기준으로 1차 검토했습니다.`
+      : "관련 자료가 충분하지 않아 추가 검색과 전문가 검토가 필요합니다.";
+
+  return [
+    "- 결론",
+    `  - ${form.topic.trim()} 사안은 문서 기준과 실제 운영 방식의 일치 여부를 먼저 확인해야 합니다.`,
+    `  - ${sourceStatus}`,
+    `  - 판례 ${caseCount}건, 행정해석 ${adminCount}건을 보고서 근거로 정리했습니다.`,
+    "",
+    "- 핵심 리스크",
+    "  - 취업규칙, 근로계약서, 임금규정, 실제 운영 방식이 서로 다르면 분쟁 리스크가 커집니다.",
+    "  - 증빙이 부족하면 근로감독, 부당해고, 임금체불, 파견 판단에서 불리하게 작용할 수 있습니다.",
+    "",
+    "- 우선 조치",
+    "  - 관련 규정과 실제 운영 자료를 먼저 대조합니다.",
+    "  - 자료 공백이 있는 부분은 개선계획과 보완 일정을 별도로 작성합니다.",
+    `  - ${tone}`
+  ].join("\n");
+}
+
+function buildBackground(form: ReportForm) {
   const situation = form.companySituation.trim() || "회사의 구체적 운영 상황은 별도로 정리되지 않았습니다.";
 
   return [
-    `${form.topic.trim()}와 관련하여 회사의 현재 운영 방식, 규정, 증빙 수준을 점검하기 위한 보고서입니다.`,
-    `회사 상황: ${situation}`,
-    tone
-  ].join("\n\n");
+    "- 검토 목적",
+    `  - ${form.topic.trim()}와 관련된 회사 운영 방식, 내부 규정, 증빙 수준을 점검합니다.`,
+    "  - 검색된 판례와 행정해석을 기준으로 실무상 리스크와 대응방안을 정리합니다.",
+    "",
+    "- 회사 상황",
+    ...toIndentedBullets(situation)
+  ].join("\n");
 }
 
-function buildIssues(form: ReportForm, keywords: string[], tone: string) {
+function buildIssues(form: ReportForm, keywords: string[]) {
   const focus = form.focus.trim() || "중점 검토사항이 별도로 입력되지 않아 검색 키워드와 자료 요약을 중심으로 쟁점을 도출했습니다.";
 
   return [
     `- 검토 주제: ${form.topic.trim()}`,
-    `- 중점 검토사항: ${focus}`,
-    `- 관련 키워드: ${keywords.join(", ")}`,
-    `- 목적별 관점: ${tone}`
+    "- 중점 검토사항",
+    ...toIndentedBullets(focus),
+    "- 관련 키워드",
+    `  - ${keywords.join(", ")}`
   ].join("\n");
 }
 
-function buildStandards(sources: ReportSource[], tone: string) {
+function buildStandards(sources: ReportSource[]) {
   const laws = uniqueStrings(sources.map((source) => source.law).filter(Boolean)).slice(0, 8);
-  const lawText = laws.length > 0 ? laws.map((law) => `- ${law}`).join("\n") : "- 검색 자료에서 명확한 관련 법령명이 충분히 확인되지 않았습니다.";
+  const lawText =
+    laws.length > 0
+      ? laws.map((law) => `  - ${compactText(law, 120)}`).join("\n")
+      : "  - 검색 자료에서 명확한 관련 법령명이 충분히 확인되지 않았습니다.";
 
   return [
+    "- 관련 법령 및 조문",
     lawText,
     "",
-    "- 판례는 사실관계, 규정 내용, 절차 준수 여부, 사용자 운영 관행을 종합적으로 봅니다.",
-    "- 행정해석은 행정기관의 업무 처리 기준으로 참고하되, 법원 판단과 다를 수 있습니다.",
-    `- ${tone}`
+    "- 판단기준",
+    "  - 판례는 사실관계, 규정 내용, 절차 준수 여부, 사용자 운영 관행을 종합적으로 봅니다.",
+    "  - 행정해석은 행정기관의 업무 처리 기준으로 참고하되, 법원 판단과 다를 수 있습니다.",
+    "  - 회사 자료는 문서상 기준과 실제 운영이 일치하는지 중심으로 확인합니다."
   ].join("\n");
 }
 
-function buildRisks(form: ReportForm, sources: ReportSource[], tone: string) {
+function buildRisks(form: ReportForm, sources: ReportSource[]) {
   const topic = form.topic;
   const hasCases = sources.some((source) => source.source_type === "판례");
   const hasAdmin = sources.some((source) => source.source_type === "행정해석");
@@ -617,8 +658,7 @@ function buildRisks(form: ReportForm, sources: ReportSource[], tone: string) {
     `- ${topic} 관련 규정, 계약서, 실제 운영 방식이 서로 다르면 분쟁 리스크가 커질 수 있습니다.`,
     "- 문서화된 기준과 실제 적용 사례가 다르면 근로감독, 부당해고, 임금체불, 차별 판단에서 불리하게 작용할 수 있습니다.",
     hasCases ? "- 관련 판례가 확인되므로 유사 사실관계와 회사 사안을 비교해야 합니다." : "- 관련 판례가 부족하여 추가 검색 또는 전문가 검토가 필요합니다.",
-    hasAdmin ? "- 관련 행정해석은 행정기관 대응 방향을 정리하는 참고자료로 활용할 수 있습니다." : "- 관련 행정해석이 부족하여 감독 대응 자료는 별도 보강이 필요합니다.",
-    `- ${tone}`
+    hasAdmin ? "- 관련 행정해석은 행정기관 대응 방향을 정리하는 참고자료로 활용할 수 있습니다." : "- 관련 행정해석이 부족하여 감독 대응 자료는 별도 보강이 필요합니다."
   ].join("\n");
 }
 
@@ -702,12 +742,16 @@ function buildExpertReviewItems(topic: string) {
 
 function formatSourceSummary(index: number, source: ReportSource) {
   return [
-    `### ${index + 1}. ${source.title}`,
-    `- 자료유형: ${source.source_type}`,
-    `- 기관/법원: ${source.institution || "-"}`,
-    `- 날짜: ${source.date || "-"}`,
-    `- 관련 법령: ${source.law || "-"}`,
-    `- 핵심 내용: ${source.summary || "-"}`
+    `#### ${index + 1}. ${compactText(source.title, 80)}`,
+    formatInfoTable([
+      ["자료유형", source.source_type],
+      ["기관/법원", source.institution || "-"],
+      ["날짜", source.date || "-"],
+      ["관련 법령", compactText(source.law || "-", 140)]
+    ]),
+    "",
+    "- 핵심 내용",
+    ...toIndentedBullets(source.summary || "-", 2, 180)
   ].join("\n");
 }
 
@@ -726,6 +770,59 @@ function formatSourcesMarkdown(sources: ReportSource[]) {
       ].join("\n")
     )
     .join("\n");
+}
+
+function formatInfoTable(rows: Array<[string, string]>) {
+  return [
+    "| 항목 | 내용 |",
+    "| --- | --- |",
+    ...rows.map(([label, value]) => `| ${label} | ${escapeTableCell(value || "-")} |`)
+  ].join("\n");
+}
+
+function toIndentedBullets(value: string, indentLevel = 1, maxLength = 140) {
+  const indent = "  ".repeat(indentLevel);
+  const sentences = splitReadableSentences(value);
+  return sentences.length > 0 ? sentences.map((sentence) => `${indent}- ${compactText(sentence, maxLength)}`) : [`${indent}- -`];
+}
+
+function splitReadableSentences(value: string) {
+  const normalized = value.replace(/\s+/g, " ").trim();
+
+  if (!normalized) {
+    return [];
+  }
+
+  const sentenceMatches = normalized.match(/[^.!?。！？]+[.!?。！？]?/g) ?? [normalized];
+  const sentences = sentenceMatches.map((sentence) => sentence.trim()).filter(Boolean);
+  const chunks: string[] = [];
+
+  sentences.forEach((sentence) => {
+    if (sentence.length <= 160) {
+      chunks.push(sentence);
+      return;
+    }
+
+    for (let index = 0; index < sentence.length; index += 120) {
+      chunks.push(sentence.slice(index, index + 120).trim());
+    }
+  });
+
+  return chunks.slice(0, 4);
+}
+
+function compactText(value: string, maxLength: number) {
+  const normalized = value.replace(/\s+/g, " ").trim();
+
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, maxLength)}...`;
+}
+
+function escapeTableCell(value: string) {
+  return compactText(value, 180).replace(/\|/g, "\\|").replace(/\n/g, " ");
 }
 
 function getPurposeTone(purpose: Purpose) {
