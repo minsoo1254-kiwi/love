@@ -1044,9 +1044,8 @@ function formatSourceSummary(index: number, source: ReportSource) {
   return [
     `#### ${index + 1}. ${compactText(source.title, 80, { ellipsis: false })}`,
     formatInfoTable([
-      ["자료유형", source.source_type],
+      ["자료유형", formatSourceTypeDate(source)],
       ["기관/법원", source.institution || "-"],
-      ["날짜", source.date || "-"],
       ["관련 법령", compactText(source.law || "-", 140, { ellipsis: false })]
     ]),
     "",
@@ -1063,13 +1062,16 @@ function formatSourcesMarkdown(sources: ReportSource[]) {
   return sources
     .map((source, index) =>
       [
-        `${index + 1}. [${source.source_type}] ${source.title}`,
-        `   - 날짜: ${source.date || "-"}`,
+        `${index + 1}. [${formatSourceTypeDate(source)}] ${source.title}`,
         `   - 기관/법원: ${source.institution || "-"}`,
         `   - 원문 URL: ${source.originalUrl || "-"}`
       ].join("\n")
     )
     .join("\n");
+}
+
+function formatSourceTypeDate(source: ReportSource) {
+  return `${source.source_type} · ${source.date || "날짜 없음"}`;
 }
 
 function formatInfoTable(rows: Array<[string, string]>) {
