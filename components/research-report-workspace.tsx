@@ -450,11 +450,15 @@ function renderReportBlock(block: ReportBlock, key: string) {
   }
 
   if (block.type === "bullets") {
+    const groupedItems = groupBulletItems(block.items);
+
     return (
       <ul className="grid gap-2 text-sm leading-7 text-[#333d4b]" key={key}>
-        {block.items.map((item, index) => (
+        {groupedItems.map((item, index) => (
           <li
-            className={`rounded-md border border-[#f2f4f6] bg-[#fbfcfd] px-3 py-2 ${item.level > 0 ? "text-[#4e5968]" : "font-semibold text-[#191f28]"}`}
+            className={`rounded-md border border-[#f2f4f6] bg-[#fbfcfd] px-3 py-2 ${
+              item.level > 0 ? "whitespace-pre-line text-[#4e5968]" : "font-semibold text-[#191f28]"
+            }`}
             key={`${key}-bullet-${index}`}
             style={{ marginLeft: `${Math.min(item.level, 3) * 18}px` }}
           >
@@ -643,6 +647,23 @@ function collectParagraph(lines: string[], startIndex: number) {
   }
 
   return { block: { type: "paragraph", text: paragraphLines.join(" ") } as ReportBlock, nextIndex: index };
+}
+
+function groupBulletItems(items: Array<{ level: number; text: string }>) {
+  const grouped: Array<{ level: number; text: string }> = [];
+
+  items.forEach((item) => {
+    const previous = grouped[grouped.length - 1];
+
+    if (previous && previous.level > 0 && previous.level === item.level) {
+      previous.text = `${previous.text}\n${item.text}`;
+      return;
+    }
+
+    grouped.push({ ...item });
+  });
+
+  return grouped;
 }
 
 function isSpecialMarkdownLine(line: string) {
@@ -1021,16 +1042,16 @@ function buildExpertReviewItems(topic: string) {
 
 function formatSourceSummary(index: number, source: ReportSource) {
   return [
-    `#### ${index + 1}. ${compactText(source.title, 80)}`,
+    `#### ${index + 1}. ${compactText(source.title, 80, { ellipsis: false })}`,
     formatInfoTable([
       ["자료유형", source.source_type],
       ["기관/법원", source.institution || "-"],
       ["날짜", source.date || "-"],
-      ["관련 법령", compactText(source.law || "-", 140)]
+      ["관련 법령", compactText(source.law || "-", 140, { ellipsis: false })]
     ]),
     "",
     "- 핵심 내용",
-    ...toIndentedBullets(source.summary || "-", 2, 180)
+    ...toIndentedBullets(source.summary || "-", 2)
   ].join("\n");
 }
 
@@ -1059,10 +1080,12 @@ function formatInfoTable(rows: Array<[string, string]>) {
   ].join("\n");
 }
 
-function toIndentedBullets(value: string, indentLevel = 1, maxLength = 140) {
+function toIndentedBullets(value: string, indentLevel = 1, maxLength?: number) {
   const indent = "  ".repeat(indentLevel);
   const sentences = splitReadableSentences(value);
-  return sentences.length > 0 ? sentences.map((sentence) => `${indent}- ${compactText(sentence, maxLength)}`) : [`${indent}- -`];
+  return sentences.length > 0
+    ? sentences.map((sentence) => `${indent}- ${maxLength ? compactText(sentence, maxLength, { ellipsis: false }) : sentence}`)
+    : [`${indent}- -`];
 }
 
 function splitReadableSentences(value: string) {
@@ -1074,30 +1097,22 @@ function splitReadableSentences(value: string) {
 
   const sentenceMatches = normalized.match(/[^.!?。！？]+[.!?。！？]?/g) ?? [normalized];
   const sentences = sentenceMatches.map((sentence) => sentence.trim()).filter(Boolean);
-  const chunks: string[] = [];
-
-  sentences.forEach((sentence) => {
-    if (sentence.length <= 160) {
-      chunks.push(sentence);
-      return;
-    }
-
-    for (let index = 0; index < sentence.length; index += 120) {
-      chunks.push(sentence.slice(index, index + 120).trim());
-    }
-  });
-
-  return chunks.slice(0, 4);
+  return sentences.slice(0, 4);
 }
 
-function compactText(value: string, maxLength: number) {
+function compactText(value: string, maxLength: number, options: { ellipsis?: boolean } = {}) {
   const normalized = value.replace(/\s+/g, " ").trim();
 
   if (normalized.length <= maxLength) {
     return normalized;
   }
 
-  return `${normalized.slice(0, maxLength)}...`;
+  const sliced = normalized.slice(0, maxLength);
+  const lastSpaceIndex = sliced.lastIndexOf(" ");
+  const hasWordBreak = lastSpaceIndex >= Math.floor(maxLength * 0.6);
+  const compacted = hasWordBreak ? sliced.slice(0, lastSpaceIndex) : sliced;
+
+  return options.ellipsis === false ? compacted : `${compacted}...`;
 }
 
 function escapeTableCell(value: string) {
