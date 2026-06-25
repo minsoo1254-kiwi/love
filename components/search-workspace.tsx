@@ -232,14 +232,16 @@ export default function SearchWorkspace() {
         <section className="rounded-md border border-[#e5e8eb] bg-white p-5 shadow-panel">
           <form className="grid gap-4" onSubmit={handleSubmit}>
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_170px_170px_170px_170px_104px]">
-              <label className="grid gap-2">
-                <span className="text-sm font-bold text-[#4e5968]">검색어</span>
-                <input
-                  className="h-11 rounded-md border border-[#d1d6db] bg-[#fbfcfd] px-3 text-sm text-[#191f28] outline-none transition placeholder:text-[#8b95a1] focus:border-[#3182f6] focus:bg-white focus:ring-2 focus:ring-[#e8f3ff]"
-                  onChange={(event) => setForm((current) => ({ ...current, query: event.target.value }))}
-                  placeholder="연차, 해고, 포괄임금, 파견"
-                  value={form.query}
-                />
+              <div className="grid gap-2">
+                <label className="grid gap-2">
+                  <span className="text-sm font-bold text-[#4e5968]">검색어</span>
+                  <input
+                    className="h-11 rounded-md border border-[#d1d6db] bg-[#fbfcfd] px-3 text-sm text-[#191f28] outline-none transition placeholder:text-[#8b95a1] focus:border-[#3182f6] focus:bg-white focus:ring-2 focus:ring-[#e8f3ff]"
+                    onChange={(event) => setForm((current) => ({ ...current, query: event.target.value }))}
+                    placeholder="연차, 해고, 포괄임금, 파견"
+                    value={form.query}
+                  />
+                </label>
                 <div className="flex flex-wrap gap-2">
                   {FREQUENT_KEYWORDS.map((keyword) => (
                     <button
@@ -253,7 +255,7 @@ export default function SearchWorkspace() {
                     </button>
                   ))}
                 </div>
-              </label>
+              </div>
 
               <label className="grid gap-2">
                 <span className="text-sm font-bold text-[#4e5968]">판례 검색범위</span>
