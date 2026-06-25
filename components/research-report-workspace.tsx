@@ -262,7 +262,7 @@ export default function ResearchReportWorkspace() {
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e5e8eb] px-5 py-4">
                 <div>
                   <h2 className="text-lg font-bold text-[#191f28]">생성된 보고서</h2>
-                  <p className="mt-1 text-sm font-medium text-[#8b95a1]">Markdown 형식 · 서버 저장 없음</p>
+                  <p className="mt-1 text-sm font-medium text-[#8b95a1]">화면용 문서 보기 · 복사 시 Markdown · 서버 저장 없음</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <CopyAction copied={copied === "report"} label="보고서 복사" onClick={() => void copyText("report", report)} />
@@ -273,9 +273,7 @@ export default function ResearchReportWorkspace() {
                   />
                 </div>
               </div>
-              <pre className="max-h-[720px] overflow-auto whitespace-pre-wrap p-5 text-sm leading-8 text-[#333d4b]">
-                {report}
-              </pre>
+              <ReportDocument markdown={report} />
             </article>
 
             <aside className="h-fit rounded-md border border-[#e5e8eb] bg-white p-5 shadow-panel">
@@ -382,6 +380,287 @@ function CopyAction({ label, copied, onClick }: { label: string; copied: boolean
       {copied ? "복사됨" : label}
     </button>
   );
+}
+
+type ReportBlock =
+  | { type: "heading"; level: 3 | 4; text: string }
+  | { type: "quote"; lines: string[] }
+  | { type: "table"; rows: string[][] }
+  | { type: "bullets"; items: Array<{ level: number; text: string }> }
+  | { type: "paragraph"; text: string };
+
+type ReportSection = {
+  title: string;
+  blocks: ReportBlock[];
+};
+
+function ReportDocument({ markdown }: { markdown: string }) {
+  const { title, introBlocks, sections } = parseReportMarkdown(markdown);
+
+  return (
+    <div className="max-h-[760px] overflow-auto bg-[#f7f8fa] p-5">
+      <div className="mx-auto grid max-w-4xl gap-5">
+        <section className="rounded-md border border-[#e5e8eb] bg-white p-5 shadow-sm">
+          <h1 className="text-2xl font-bold leading-9 text-[#191f28]">{title || "리서치 보고서"}</h1>
+          <div className="mt-5 grid gap-4">{introBlocks.map((block, index) => renderReportBlock(block, `intro-${index}`))}</div>
+        </section>
+
+        {sections.map((section, index) => (
+          <section className="rounded-md border border-[#e5e8eb] bg-white p-5 shadow-sm" key={`${section.title}-${index}`}>
+            <div className="mb-5 flex items-center gap-3 border-b border-[#f2f4f6] pb-4">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-[#e8f3ff] text-sm font-bold text-[#3182f6]">
+                {index + 1}
+              </span>
+              <h2 className="text-xl font-bold leading-8 text-[#191f28]">{section.title}</h2>
+            </div>
+            <div className="grid gap-5">{section.blocks.map((block, blockIndex) => renderReportBlock(block, `${section.title}-${blockIndex}`))}</div>
+          </section>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function renderReportBlock(block: ReportBlock, key: string) {
+  if (block.type === "heading") {
+    const headingClass =
+      block.level === 3
+        ? "border-l-4 border-[#3182f6] pl-3 text-lg font-bold leading-7 text-[#191f28]"
+        : "rounded bg-[#f7f8fa] px-3 py-2 text-base font-bold leading-7 text-[#333d4b]";
+
+    return (
+      <h3 className={headingClass} key={key}>
+        {stripSectionNumber(block.text)}
+      </h3>
+    );
+  }
+
+  if (block.type === "quote") {
+    return (
+      <div className="rounded-md border border-[#ffe6b8] bg-[#fff8e1] p-4 text-sm font-semibold leading-7 text-[#8a5b00]" key={key}>
+        {block.lines.map((line, index) => (
+          <p key={`${key}-quote-${index}`}>{line}</p>
+        ))}
+      </div>
+    );
+  }
+
+  if (block.type === "table") {
+    return <ReportTable key={key} rows={block.rows} />;
+  }
+
+  if (block.type === "bullets") {
+    return (
+      <ul className="grid gap-2 text-sm leading-7 text-[#333d4b]" key={key}>
+        {block.items.map((item, index) => (
+          <li
+            className={`rounded-md border border-[#f2f4f6] bg-[#fbfcfd] px-3 py-2 ${item.level > 0 ? "text-[#4e5968]" : "font-semibold text-[#191f28]"}`}
+            key={`${key}-bullet-${index}`}
+            style={{ marginLeft: `${Math.min(item.level, 3) * 18}px` }}
+          >
+            {item.text}
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  return (
+    <p className="rounded-md bg-[#fbfcfd] px-3 py-2 text-sm leading-7 text-[#4e5968]" key={key}>
+      {block.text}
+    </p>
+  );
+}
+
+function ReportTable({ rows }: { rows: string[][] }) {
+  const cleanedRows = rows.filter((row) => !row.every((cell) => /^-+$/.test(cell.replace(/\s/g, ""))));
+  const [header = [], ...bodyRows] = cleanedRows;
+
+  if (header.length === 2 && header[0] === "항목" && header[1] === "내용") {
+    return (
+      <dl className="grid overflow-hidden rounded-md border border-[#e5e8eb] text-sm md:grid-cols-[160px_1fr]">
+        {bodyRows.map((row, index) => (
+          <div className="contents" key={`${row.join("-")}-${index}`}>
+            <dt className="border-b border-[#f2f4f6] bg-[#fbfcfd] px-3 py-2 font-bold text-[#4e5968]">{row[0] || "-"}</dt>
+            <dd className="border-b border-[#f2f4f6] bg-white px-3 py-2 leading-7 text-[#333d4b]">{row[1] || "-"}</dd>
+          </div>
+        ))}
+      </dl>
+    );
+  }
+
+  return (
+    <div className="overflow-auto rounded-md border border-[#e5e8eb]">
+      <table className="min-w-full text-left text-sm">
+        <thead className="bg-[#fbfcfd] text-[#4e5968]">
+          <tr>
+            {header.map((cell, index) => (
+              <th className="border-b border-[#e5e8eb] px-3 py-2 font-bold" key={`${cell}-${index}`}>
+                {cell}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[#f2f4f6] text-[#333d4b]">
+          {bodyRows.map((row, rowIndex) => (
+            <tr key={`${row.join("-")}-${rowIndex}`}>
+              {row.map((cell, cellIndex) => (
+                <td className="px-3 py-2 leading-7" key={`${cell}-${cellIndex}`}>
+                  {cell || "-"}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function parseReportMarkdown(markdown: string) {
+  const lines = markdown.split("\n");
+  const introBlocks: ReportBlock[] = [];
+  const sections: ReportSection[] = [];
+  let title = "";
+  let index = 0;
+  let currentBlocks = introBlocks;
+
+  while (index < lines.length) {
+    const line = lines[index];
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      index += 1;
+      continue;
+    }
+
+    if (trimmed.startsWith("# ")) {
+      title = trimmed.replace(/^#\s+/, "");
+      index += 1;
+      continue;
+    }
+
+    if (trimmed.startsWith("## ")) {
+      const section: ReportSection = {
+        title: stripSectionNumber(trimmed.replace(/^##\s+/, "")),
+        blocks: []
+      };
+      sections.push(section);
+      currentBlocks = section.blocks;
+      index += 1;
+      continue;
+    }
+
+    if (trimmed.startsWith("### ")) {
+      currentBlocks.push({ type: "heading", level: 3, text: trimmed.replace(/^###\s+/, "") });
+      index += 1;
+      continue;
+    }
+
+    if (trimmed.startsWith("#### ")) {
+      currentBlocks.push({ type: "heading", level: 4, text: trimmed.replace(/^####\s+/, "") });
+      index += 1;
+      continue;
+    }
+
+    if (trimmed.startsWith(">")) {
+      const { block, nextIndex } = collectQuote(lines, index);
+      currentBlocks.push(block);
+      index = nextIndex;
+      continue;
+    }
+
+    if (trimmed.startsWith("|")) {
+      const { block, nextIndex } = collectTable(lines, index);
+      currentBlocks.push(block);
+      index = nextIndex;
+      continue;
+    }
+
+    if (/^\s*-\s+/.test(line)) {
+      const { block, nextIndex } = collectBullets(lines, index);
+      currentBlocks.push(block);
+      index = nextIndex;
+      continue;
+    }
+
+    const { block, nextIndex } = collectParagraph(lines, index);
+    currentBlocks.push(block);
+    index = nextIndex;
+  }
+
+  return { title, introBlocks, sections };
+}
+
+function collectQuote(lines: string[], startIndex: number) {
+  const quoteLines: string[] = [];
+  let index = startIndex;
+
+  while (index < lines.length && lines[index].trim().startsWith(">")) {
+    quoteLines.push(lines[index].trim().replace(/^>\s?/, ""));
+    index += 1;
+  }
+
+  return { block: { type: "quote", lines: quoteLines } as ReportBlock, nextIndex: index };
+}
+
+function collectTable(lines: string[], startIndex: number) {
+  const rows: string[][] = [];
+  let index = startIndex;
+
+  while (index < lines.length && lines[index].trim().startsWith("|")) {
+    rows.push(splitTableRow(lines[index]));
+    index += 1;
+  }
+
+  return { block: { type: "table", rows } as ReportBlock, nextIndex: index };
+}
+
+function collectBullets(lines: string[], startIndex: number) {
+  const items: Array<{ level: number; text: string }> = [];
+  let index = startIndex;
+
+  while (index < lines.length && /^\s*-\s+/.test(lines[index])) {
+    const line = lines[index];
+    const leadingSpaces = line.match(/^\s*/)?.[0].length ?? 0;
+    items.push({
+      level: Math.floor(leadingSpaces / 2),
+      text: line.replace(/^\s*-\s+/, "")
+    });
+    index += 1;
+  }
+
+  return { block: { type: "bullets", items } as ReportBlock, nextIndex: index };
+}
+
+function collectParagraph(lines: string[], startIndex: number) {
+  const paragraphLines: string[] = [];
+  let index = startIndex;
+
+  while (index < lines.length && lines[index].trim() && !isSpecialMarkdownLine(lines[index])) {
+    paragraphLines.push(lines[index].trim());
+    index += 1;
+  }
+
+  return { block: { type: "paragraph", text: paragraphLines.join(" ") } as ReportBlock, nextIndex: index };
+}
+
+function isSpecialMarkdownLine(line: string) {
+  const trimmed = line.trim();
+  return trimmed.startsWith("#") || trimmed.startsWith(">") || trimmed.startsWith("|") || /^\s*-\s+/.test(line);
+}
+
+function splitTableRow(line: string) {
+  return line
+    .trim()
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split("|")
+    .map((cell) => cell.trim().replace(/\\\|/g, "|"));
+}
+
+function stripSectionNumber(value: string) {
+  return value.replace(/^\d+(\.\d+)?\.\s*/, "");
 }
 
 function ErrorBand({ message }: { message: string }) {
