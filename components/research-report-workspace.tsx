@@ -284,15 +284,15 @@ export default function ResearchReportWorkspace() {
               <div className="grid gap-3">
                 {sources.map((source) => (
                   <article className="rounded-md border border-[#f2f4f6] bg-[#fbfcfd] p-3" key={source.id}>
-                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <div className="mb-2 inline-flex max-w-full items-center gap-2 whitespace-nowrap">
                       <span
-                        className={`rounded px-2 py-1 text-xs font-bold ${
+                        className={`shrink-0 rounded px-2 py-1 text-xs font-bold ${
                           source.source_type === "판례" ? "bg-[#e8f3ff] text-[#3182f6]" : "bg-[#f2f4f6] text-[#4e5968]"
                         }`}
                       >
                         {source.source_type}
                       </span>
-                      <span className="text-xs font-semibold text-[#8b95a1]">{source.date || "날짜 없음"}</span>
+                      <span className="min-w-0 truncate text-xs font-semibold text-[#8b95a1]">{source.date || "날짜 없음"}</span>
                     </div>
                     <h3 className="text-sm font-bold leading-6 text-[#191f28]">{source.title}</h3>
                     <p className="mt-1 text-xs font-semibold text-[#6b7684]">{source.institution || "-"}</p>
