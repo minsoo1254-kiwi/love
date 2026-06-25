@@ -221,12 +221,20 @@ export default function SearchWorkspace() {
             <p className="mb-2 text-sm font-bold text-[#3182f6]">Integrated HR Legal Search</p>
             <h1 className="text-3xl font-bold tracking-normal text-[#191f28]">노동법 판례·행정해석 통합 검색</h1>
           </div>
-          <Link
-            className="hidden rounded-md border border-[#e5e8eb] bg-white px-4 py-3 text-sm font-bold text-[#4e5968] shadow-panel transition hover:bg-[#f2f4f6] md:block"
-            href="/admin"
-          >
-            관리자
-          </Link>
+          <nav className="flex flex-wrap items-center gap-2">
+            <Link
+              className="rounded-md border border-[#e5e8eb] bg-white px-4 py-3 text-sm font-bold text-[#4e5968] shadow-panel transition hover:bg-[#f2f4f6]"
+              href="/research-report"
+            >
+              리서치 보고서
+            </Link>
+            <Link
+              className="rounded-md border border-[#e5e8eb] bg-white px-4 py-3 text-sm font-bold text-[#4e5968] shadow-panel transition hover:bg-[#f2f4f6]"
+              href="/admin"
+            >
+              관리자
+            </Link>
+          </nav>
         </header>
 
         <section className="rounded-md border border-[#e5e8eb] bg-white p-5 shadow-panel">
